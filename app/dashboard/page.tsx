@@ -30,6 +30,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useRouter } from 'next/navigation';
+import { MoreVertical, Pencil, Trash2 } from 'lucide-react';
 
 export default function DashboardPage() {
   // State management (like Vue's ref())
@@ -187,11 +188,6 @@ export default function DashboardPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Profile</DropdownMenuItem>
-                <DropdownMenuItem>Settings</DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -317,15 +313,38 @@ export default function DashboardPage() {
                 >
                   <CardHeader>
                     <div className="flex justify-between items-start">
-                      <div>
+                      <div className="flex-1">
                         <CardTitle className="text-lg">{event.title}</CardTitle>
                         <CardDescription className="mt-1">
                           {event.venue} • {event.date} at {event.time}
                         </CardDescription>
                       </div>
-                      <Badge className={getStatusColor(event.status)}>
-                        {event.status.toUpperCase()}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge className={getStatusColor(event.status)}>
+                          {event.status.toUpperCase()}
+                        </Badge>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenuItem onClick={(e) => handleEditEvent(event.id, e)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={(e) => handleDeleteEvent(event.id, e)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -349,24 +368,6 @@ export default function DashboardPage() {
                             {event.attendees.toLocaleString()} / {event.maxCapacity?.toLocaleString()} attendees
                           </span>
                         )}
-                      </div>
-                      <div className="flex gap-2 pt-2 border-t">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => handleEditEvent(event.id, e)}
-                          className="flex-1"
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={(e) => handleDeleteEvent(event.id, e)}
-                          className="flex-1"
-                        >
-                          Delete
-                        </Button>
                       </div>
                     </div>
                   </CardContent>
