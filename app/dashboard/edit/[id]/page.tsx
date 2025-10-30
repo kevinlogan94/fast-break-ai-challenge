@@ -2,13 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { SportType, EventStatus } from '@/lib/types';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { getEventById, updateEvent } from '@/actions/events';
 import { toast } from 'sonner';
+import { eventEditFormSchema, type EventEditFormValues } from '@/lib/validations/event';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import {
   Select,
   SelectContent,
@@ -22,23 +31,25 @@ export default function EditEventPage() {
   const params = useParams();
   const eventId = params.id as string;
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
 
-  // Form state for event
-  const [event, setEvent] = useState({
-    title: '',
-    sport: 'Basketball' as SportType,
-    status: 'upcoming' as EventStatus,
-    event_date: '',
-    event_time: '',
-    venue: '',
-    home_team: '',
-    away_team: '',
-    home_score: null as number | null,
-    away_score: null as number | null,
-    description: '',
-    attendees: 0,
-    max_capacity: 0,
+  // Initialize react-hook-form with Zod validation
+  const form = useForm<EventEditFormValues>({
+    resolver: zodResolver(eventEditFormSchema) as any,
+    defaultValues: {
+      title: '',
+      sport: 'Basketball',
+      status: 'upcoming',
+      event_date: '',
+      event_time: '',
+      venue: '',
+      home_team: '',
+      away_team: '',
+      home_score: null,
+      away_score: null,
+      description: '',
+      attendees: undefined,
+      max_capacity: 0,
+    },
   });
 
   // Fetch event data on mount
@@ -60,7 +71,8 @@ export default function EditEventPage() {
 
       if (result.data) {
         const data = result.data;
-        setEvent({
+        // Reset form with fetched data
+        form.reset({
           title: data.title,
           sport: data.sport,
           status: data.status,
@@ -83,27 +95,10 @@ export default function EditEventPage() {
     fetchEvent();
   }, [eventId, router]);
 
-  const handleUpdateEvent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSaving(true);
-
+  const onSubmit = async (values: EventEditFormValues) => {
     try {
       // Use Server Action instead of direct query
-      const result = await updateEvent(eventId, {
-        title: event.title,
-        sport: event.sport,
-        status: event.status,
-        event_date: event.event_date,
-        event_time: event.event_time,
-        venue: event.venue,
-        home_team: event.home_team,
-        away_team: event.away_team,
-        home_score: event.home_score,
-        away_score: event.away_score,
-        description: event.description,
-        attendees: event.attendees,
-        max_capacity: event.max_capacity,
-      });
+      const result = await updateEvent(eventId, values);
 
       if (!result.success) {
         toast.error('Failed to update event', {
@@ -120,8 +115,6 @@ export default function EditEventPage() {
       toast.error('Failed to update event', {
         description: 'An unexpected error occurred',
       });
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -161,189 +154,261 @@ export default function EditEventPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleUpdateEvent} className="space-y-6">
-              {/* Event Title & Sport */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Event Title *</Label>
-                  <Input
-                    id="title"
-                    value={event.title}
-                    onChange={(e) => setEvent({ ...event, title: e.target.value })}
-                    placeholder="Lakers vs Warriors"
-                    required
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {/* Event Title & Sport */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Event Title *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Lakers vs Warriors" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="sport"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Sport *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a sport" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Basketball">Basketball</SelectItem>
+                            <SelectItem value="Football">Football</SelectItem>
+                            <SelectItem value="Soccer">Soccer</SelectItem>
+                            <SelectItem value="Baseball">Baseball</SelectItem>
+                            <SelectItem value="Tennis">Tennis</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sport">Sport *</Label>
-                  <Select
-                    value={event.sport}
-                    onValueChange={(value) => setEvent({ ...event, sport: value as SportType })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Basketball">Basketball</SelectItem>
-                      <SelectItem value="Football">Football</SelectItem>
-                      <SelectItem value="Soccer">Soccer</SelectItem>
-                      <SelectItem value="Baseball">Baseball</SelectItem>
-                      <SelectItem value="Tennis">Tennis</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
 
-              {/* Teams */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="home_team">Home Team *</Label>
-                  <Input
-                    id="home_team"
-                    value={event.home_team}
-                    onChange={(e) => setEvent({ ...event, home_team: e.target.value })}
-                    placeholder="Lakers"
-                    required
+                {/* Teams */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="home_team"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Home Team *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Lakers" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="away_team"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Away Team *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Warriors" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="away_team">Away Team *</Label>
-                  <Input
-                    id="away_team"
-                    value={event.away_team}
-                    onChange={(e) => setEvent({ ...event, away_team: e.target.value })}
-                    placeholder="Warriors"
-                    required
-                  />
-                </div>
-              </div>
 
-              {/* Scores (for live/completed events) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="home_score">Home Score</Label>
-                  <Input
-                    id="home_score"
-                    type="number"
-                    value={event.home_score ?? ''}
-                    onChange={(e) => setEvent({ ...event, home_score: e.target.value ? parseInt(e.target.value) : null })}
-                    placeholder="0"
+                {/* Scores (for live/completed events) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="home_score"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Home Score</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="0" 
+                            {...field} 
+                            value={field.value ?? ''} 
+                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="away_score"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Away Score</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="0" 
+                            {...field} 
+                            value={field.value ?? ''} 
+                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="away_score">Away Score</Label>
-                  <Input
-                    id="away_score"
-                    type="number"
-                    value={event.away_score ?? ''}
-                    onChange={(e) => setEvent({ ...event, away_score: e.target.value ? parseInt(e.target.value) : null })}
-                    placeholder="0"
-                  />
-                </div>
-              </div>
 
-              {/* Venue */}
-              <div className="space-y-2">
-                <Label htmlFor="venue">Venue *</Label>
-                <Input
-                  id="venue"
-                  value={event.venue}
-                  onChange={(e) => setEvent({ ...event, venue: e.target.value })}
-                  placeholder="Crypto.com Arena"
-                  required
+                {/* Venue */}
+                <FormField
+                  control={form.control}
+                  name="venue"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Venue *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Crypto.com Arena" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              {/* Date & Time */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="event_date">Date *</Label>
-                  <Input
-                    id="event_date"
-                    type="date"
-                    value={event.event_date}
-                    onChange={(e) => setEvent({ ...event, event_date: e.target.value })}
-                    required
+                {/* Date & Time */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="event_date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date *</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="event_time"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Time *</FormLabel>
+                        <FormControl>
+                          <Input type="time" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="event_time">Time *</Label>
-                  <Input
-                    id="event_time"
-                    type="time"
-                    value={event.event_time}
-                    onChange={(e) => setEvent({ ...event, event_time: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
 
-              {/* Status, Attendees & Capacity */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status *</Label>
-                  <Select
-                    value={event.status}
-                    onValueChange={(value) => setEvent({ ...event, status: value as EventStatus })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="upcoming">Upcoming</SelectItem>
-                      <SelectItem value="live">Live</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="attendees">Attendees</Label>
-                  <Input
-                    id="attendees"
-                    type="number"
-                    value={event.attendees || ''}
-                    onChange={(e) => setEvent({ ...event, attendees: parseInt(e.target.value) || 0 })}
-                    placeholder="0"
+                {/* Status, Attendees & Capacity */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="upcoming">Upcoming</SelectItem>
+                            <SelectItem value="live">Live</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="attendees"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Attendees</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="0" 
+                            {...field} 
+                            value={field.value ?? ''} 
+                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="max_capacity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Max Capacity</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="20000" 
+                            {...field} 
+                            value={field.value ?? ''} 
+                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="max_capacity">Max Capacity</Label>
-                  <Input
-                    id="max_capacity"
-                    type="number"
-                    value={event.max_capacity || ''}
-                    onChange={(e) => setEvent({ ...event, max_capacity: parseInt(e.target.value) || 0 })}
-                    placeholder="20000"
-                  />
-                </div>
-              </div>
 
-              {/* Description */}
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  value={event.description}
-                  onChange={(e) => setEvent({ ...event, description: e.target.value })}
-                  placeholder="Western Conference showdown"
+                {/* Description */}
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Western Conference showdown" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              {/* Actions */}
-              <div className="flex justify-end gap-3 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push('/dashboard')}
-                  disabled={isSaving}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </div>
-            </form>
+                {/* Actions */}
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.push('/dashboard')}
+                    disabled={form.formState.isSubmitting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={form.formState.isSubmitting}>
+                    {form.formState.isSubmitting ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </div>
+              </form>
+            </Form>
           </CardContent>
         </Card>
       </main>

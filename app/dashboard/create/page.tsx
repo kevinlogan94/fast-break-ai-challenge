@@ -30,7 +30,7 @@ export default function CreateEventPage() {
 
   // Initialize react-hook-form with Zod validation
   const form = useForm<EventFormValues>({
-    resolver: zodResolver(eventFormSchema),
+    resolver: zodResolver(eventFormSchema) as any,
     defaultValues: {
       title: '',
       sport: 'Basketball',
