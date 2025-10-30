@@ -46,8 +46,18 @@ pnpm install
 
 Create a `.env.local` file in the root directory:
 ```bash
+# Required
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Google OAuth (Required)
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+# Deployment (Recommended)
+# Set to your deployed origin (e.g., https://your-site.netlify.app)
+# For local dev you may omit or use http://localhost:3000
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
 4. Configure Supabase:
@@ -55,7 +65,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 In your Supabase project dashboard:
 - Go to Authentication > URL Configuration
 - Add `http://localhost:3000/auth/callback` to Redirect URLs
-- Enable Google OAuth provider
+- If deploying, also add your deployed URL: `https://your-site.example/auth/callback`
+- Enable the Google OAuth provider and set client ID/secret
 
 5. Run the development server:
 ```bash
@@ -68,17 +79,23 @@ pnpm dev
 
 ```
 app/
-  ├── auth/callback/      # OAuth callback handler
-  ├── dashboard/          # Main dashboard page
-  ├── login/              # Login page
-  └── layout.tsx          # Root layout
+  ├── auth/callback/route.ts   # OAuth callback (server route handler)
+  ├── dashboard/               # Main dashboard page
+  ├── login/                   # Login page
+  └── layout.tsx               # Root layout
+actions/
+  ├── events.ts                # Server Actions for CRUD and filtered search
 components/
-  └── ui/                 # shadcn/ui components
+  └── ui/                      # shadcn/ui components
 lib/
-  ├── supabase/           # Supabase client utilities
-  ├── types.ts            # TypeScript types
-  └── mock-data.ts        # Sample event data
-middleware.ts             # Auth middleware
+  ├── supabase/                # Supabase server/browser clients
+  ├── types.ts                 # TypeScript types
+  └── utils.ts                 # Utilities
+middleware.ts                  # Auth middleware (see deprecation note)
+supabase/
+  ├── migrations/              # SQL migrations
+  ├── seed.sql                 # Optional seed data
+  └── config.toml              # Local stack config
 ```
 
 ## Key Learning Points (Vue → React)
@@ -95,7 +112,7 @@ middleware.ts             # Auth middleware
 1. User clicks "Continue with Google" on `/login`
 2. Supabase redirects to Google OAuth
 3. Google redirects back to `/auth/callback`
-4. Callback exchanges code for session
+4. Callback exchanges code for session in `app/auth/callback/route.ts` and redirects to `/dashboard`
 5. Middleware protects `/dashboard` routes
 6. User is redirected to dashboard
 
@@ -107,3 +124,25 @@ This project was built as part of the Fastbreak.ai technical assessment to demon
 - Component architecture with shadcn/ui
 - TypeScript best practices
 - Responsive design
+
+### Server-backed search
+- The dashboard performs debounced server-side fetching (100–500ms) via `getEventsFiltered()` to filter by title/home/away and by sport/status on the server. Venue-name matching is currently done client-side.
+
+### Database migrations (Supabase CLI)
+To push local migrations in `supabase/migrations/` to a remote project:
+```bash
+# Install CLI (macOS)
+brew install supabase/tap/supabase
+
+# Login and link
+supabase login
+supabase link --project-ref <YOUR_PROJECT_REF>
+
+# Push migrations
+supabase db push
+
+# Optional: seed remotely using SQL Editor with supabase/seed.sql
+```
+
+### Middleware deprecation note
+- Next.js 16 warns that the `middleware` file convention is deprecated in favor of `proxy`. This project uses `middleware.ts` for auth guarding; it currently works but may require migration in a future Next.js release.
