@@ -55,7 +55,7 @@ export default function DashboardPage() {
       // Fetch events using Server Action
       const result = await getEvents();
       
-      if (result.success && result.data) {
+      if (result.success) {
         // Transform database format to our Event type
         const transformedEvents: Event[] = result.data.map((event: any) => ({
           id: event.id,

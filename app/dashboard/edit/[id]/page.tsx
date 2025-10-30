@@ -49,7 +49,7 @@ export default function EditEventPage() {
       // Use Server Action instead of direct query
       const result = await getEventById(eventId);
 
-      if (!result.success || !result.data) {
+      if (!result.success) {
         console.error('Error fetching event:', result.error);
         toast.error('Failed to load event', {
           description: result.error,
