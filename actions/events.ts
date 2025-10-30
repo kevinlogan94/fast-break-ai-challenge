@@ -30,6 +30,44 @@ export async function getEvents(): Promise<ActionResponse<any[]>> {
   });
 }
 
+export async function getEventsFiltered(params: {
+  query?: string;
+  sport?: string | 'all';
+  status?: string | 'all';
+}): Promise<ActionResponse<any[]>> {
+  return safeAction(async () => {
+    const supabase = await createClient();
+
+    let query = supabase
+      .from('events')
+      .select(`
+        *,
+        event_venues (
+          venues (*)
+        )
+      `)
+      .order('event_date', { ascending: true });
+
+    if (params.sport && params.sport !== 'all') {
+      query = query.eq('sport', params.sport);
+    }
+    if (params.status && params.status !== 'all') {
+      query = query.eq('status', params.status);
+    }
+
+    if (params.query && params.query.trim() !== '') {
+      const term = `%${params.query.trim()}%`;
+      query = query.or(
+        `title.ilike.${term},home_team.ilike.${term},away_team.ilike.${term}`
+      );
+    }
+
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    return data || [];
+  });
+}
+
 export async function getEventById(id: string): Promise<ActionResponse<any>> {
   return safeAction(async () => {
     const supabase = await createClient();

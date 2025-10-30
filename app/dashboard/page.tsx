@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Event, SportType, EventStatus } from '@/lib/types';
 import { formatDateTime } from '@/lib/utils';
 import type { User } from '@supabase/supabase-js';
-import { getEvents, deleteEvent } from '@/actions/events';
+import { getEvents, getEventsFiltered, deleteEvent } from '@/actions/events';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -90,6 +90,48 @@ export default function DashboardPage() {
     
     fetchData();
   }, [supabase]);
+
+  // Debounced server-side search and filter
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      try {
+        const result = await getEventsFiltered({
+          query: searchQuery || undefined,
+          sport: sportFilter,
+          status: statusFilter,
+        });
+
+        if (result.success) {
+          const transformedEvents: Event[] = result.data.map((event: any) => {
+            const venues = (event.event_venues || [])
+              .map((ev: any) => ev.venues)
+              .filter(Boolean);
+            return {
+              id: event.id,
+              title: event.title,
+              sport: event.sport as SportType,
+              status: event.status as EventStatus,
+              date: event.event_date,
+              time: event.event_time,
+              venues,
+              homeTeam: event.home_team,
+              awayTeam: event.away_team,
+              homeScore: event.home_score,
+              awayScore: event.away_score,
+              description: event.description,
+              attendees: event.attendees,
+              maxCapacity: event.max_capacity,
+            } as Event;
+          });
+          setEvents(transformedEvents);
+        }
+      } catch (err) {
+        console.error('Search fetch failed', err);
+      }
+    }, 100); // 0.1s debounce
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, sportFilter, statusFilter]);
 
   // Computed values (like Vue's computed())
   // useMemo recalculates only when dependencies change
