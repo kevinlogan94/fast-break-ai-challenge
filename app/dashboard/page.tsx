@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Event, SportType, EventStatus } from '@/lib/types';
 import type { User } from '@supabase/supabase-js';
 import { getEvents, deleteEvent } from '@/actions/events';
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -128,15 +129,20 @@ export default function DashboardPage() {
       const result = await deleteEvent(eventId);
 
       if (!result.success) {
-        alert('Failed to delete event: ' + result.error);
+        toast.error('Failed to delete event', {
+          description: result.error,
+        });
         return;
       }
 
       // Remove from local state
       setEvents(events.filter(e => e.id !== eventId));
+      toast.success('Event deleted successfully');
     } catch (error) {
       console.error('Unexpected error:', error);
-      alert('Failed to delete event');
+      toast.error('Failed to delete event', {
+        description: 'An unexpected error occurred',
+      });
     }
   };
 

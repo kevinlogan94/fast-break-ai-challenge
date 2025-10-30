@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { SportType, EventStatus } from '@/lib/types';
 import { getEventById, updateEvent } from '@/actions/events';
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -50,7 +51,9 @@ export default function EditEventPage() {
 
       if (!result.success || !result.data) {
         console.error('Error fetching event:', result.error);
-        alert('Failed to load event');
+        toast.error('Failed to load event', {
+          description: result.error,
+        });
         router.push('/dashboard');
         return;
       }
@@ -103,15 +106,20 @@ export default function EditEventPage() {
       });
 
       if (!result.success) {
-        alert('Failed to update event: ' + result.error);
+        toast.error('Failed to update event', {
+          description: result.error,
+        });
         return;
       }
 
+      toast.success('Event updated successfully');
       // Redirect back to dashboard
       router.push('/dashboard');
     } catch (error) {
       console.error('Unexpected error:', error);
-      alert('Failed to update event');
+      toast.error('Failed to update event', {
+        description: 'An unexpected error occurred',
+      });
     } finally {
       setIsSaving(false);
     }

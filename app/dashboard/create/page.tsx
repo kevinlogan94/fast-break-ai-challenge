@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SportType, EventStatus } from '@/lib/types';
 import { createEvent } from '@/actions/events';
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,15 +44,20 @@ export default function CreateEventPage() {
       const result = await createEvent(newEvent);
 
       if (!result.success) {
-        alert('Failed to create event: ' + result.error);
+        toast.error('Failed to create event', {
+          description: result.error,
+        });
         return;
       }
 
+      toast.success('Event created successfully');
       // Redirect back to dashboard
       router.push('/dashboard');
     } catch (error) {
       console.error('Unexpected error:', error);
-      alert('Failed to create event');
+      toast.error('Failed to create event', {
+        description: 'An unexpected error occurred',
+      });
     } finally {
       setIsCreating(false);
     }
