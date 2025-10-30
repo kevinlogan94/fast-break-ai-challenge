@@ -5,7 +5,6 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { mockEvents } from '@/lib/mock-data';
 import { Event, SportType, EventStatus } from '@/lib/types';
 import type { User } from '@supabase/supabase-js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,22 +36,59 @@ export default function DashboardPage() {
   const [statusFilter, setStatusFilter] = useState<EventStatus | 'all'>('all');
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const supabase = createClient();
 
-  // Fetch user on mount (like onMounted in Vue)
+  // Fetch user and events on mount (like onMounted in Vue)
   useEffect(() => {
-    const getUser = async () => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      
+      // Fetch user
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+      
+      // Fetch events from database
+      const { data: eventsData, error } = await supabase
+        .from('events')
+        .select('*')
+        .order('event_date', { ascending: true });
+      
+      if (error) {
+        console.error('Error fetching events:', error);
+      } else if (eventsData) {
+        // Transform database format to our Event type
+        const transformedEvents: Event[] = eventsData.map((event: any) => ({
+          id: event.id,
+          title: event.title,
+          sport: event.sport as SportType,
+          status: event.status as EventStatus,
+          date: event.event_date,
+          time: event.event_time,
+          venue: event.venue,
+          homeTeam: event.home_team,
+          awayTeam: event.away_team,
+          homeScore: event.home_score,
+          awayScore: event.away_score,
+          description: event.description,
+          attendees: event.attendees,
+          maxCapacity: event.max_capacity,
+        }));
+        setEvents(transformedEvents);
+      }
+      
+      setIsLoading(false);
     };
-    getUser();
-  }, [supabase.auth]);
+    
+    fetchData();
+  }, [supabase]);
 
   // Computed values (like Vue's computed())
   // useMemo recalculates only when dependencies change
   const filteredEvents = useMemo(() => {
-    return mockEvents.filter((event) => {
+    return events.filter((event) => {
       const matchesSearch = 
         event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.homeTeam.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -64,7 +100,7 @@ export default function DashboardPage() {
       
       return matchesSearch && matchesSport && matchesStatus;
     });
-  }, [searchQuery, sportFilter, statusFilter]);
+  }, [events, searchQuery, sportFilter, statusFilter]);
 
   const getStatusColor = (status: EventStatus) => {
     switch (status) {
@@ -137,14 +173,16 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Total Events</CardDescription>
-              <CardTitle className="text-3xl">{mockEvents.length}</CardTitle>
+              <CardTitle className="text-3xl">
+                {isLoading ? '...' : events.length}
+              </CardTitle>
             </CardHeader>
           </Card>
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Live Now</CardDescription>
               <CardTitle className="text-3xl">
-                {mockEvents.filter(e => e.status === 'live').length}
+                {isLoading ? '...' : events.filter(e => e.status === 'live').length}
               </CardTitle>
             </CardHeader>
           </Card>
@@ -152,7 +190,7 @@ export default function DashboardPage() {
             <CardHeader className="pb-2">
               <CardDescription>Upcoming</CardDescription>
               <CardTitle className="text-3xl">
-                {mockEvents.filter(e => e.status === 'upcoming').length}
+                {isLoading ? '...' : events.filter(e => e.status === 'upcoming').length}
               </CardTitle>
             </CardHeader>
           </Card>
@@ -160,7 +198,7 @@ export default function DashboardPage() {
             <CardHeader className="pb-2">
               <CardDescription>Completed</CardDescription>
               <CardTitle className="text-3xl">
-                {mockEvents.filter(e => e.status === 'completed').length}
+                {isLoading ? '...' : events.filter(e => e.status === 'completed').length}
               </CardTitle>
             </CardHeader>
           </Card>
@@ -218,7 +256,13 @@ export default function DashboardPage() {
             Events ({filteredEvents.length})
           </h2>
           
-          {filteredEvents.length === 0 ? (
+          {isLoading ? (
+            <Card>
+              <CardContent className="py-12 text-center text-gray-500">
+                Loading events...
+              </CardContent>
+            </Card>
+          ) : filteredEvents.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center text-gray-500">
                 No events found matching your filters.
