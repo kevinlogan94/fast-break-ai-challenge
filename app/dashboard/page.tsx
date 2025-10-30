@@ -118,6 +118,38 @@ export default function DashboardPage() {
     router.push('/login');
   };
 
+  const handleDeleteEvent = async (eventId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    
+    if (!confirm('Are you sure you want to delete this event?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', eventId);
+
+      if (error) {
+        console.error('Error deleting event:', error);
+        alert('Failed to delete event');
+        return;
+      }
+
+      // Remove from local state
+      setEvents(events.filter(e => e.id !== eventId));
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      alert('Failed to delete event');
+    }
+  };
+
+  const handleEditEvent = (eventId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    router.push(`/dashboard/edit/${eventId}`);
+  };
+
   // Get user initials for avatar
   const getUserInitials = () => {
     if (!user?.user_metadata?.full_name) return 'U';
@@ -316,6 +348,24 @@ export default function DashboardPage() {
                             {event.attendees.toLocaleString()} / {event.maxCapacity?.toLocaleString()} attendees
                           </span>
                         )}
+                      </div>
+                      <div className="flex gap-2 pt-2 border-t">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => handleEditEvent(event.id, e)}
+                          className="flex-1"
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={(e) => handleDeleteEvent(event.id, e)}
+                          className="flex-1"
+                        >
+                          Delete
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
