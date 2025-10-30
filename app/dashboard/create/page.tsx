@@ -1,14 +1,22 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { SportType, EventStatus } from '@/lib/types';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { createEvent } from '@/actions/events';
 import { toast } from 'sonner';
+import { eventFormSchema, type EventFormValues } from '@/lib/validations/event';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import {
   Select,
   SelectContent,
@@ -19,29 +27,28 @@ import {
 
 export default function CreateEventPage() {
   const router = useRouter();
-  const [isCreating, setIsCreating] = useState(false);
 
-  // Form state for new event
-  const [newEvent, setNewEvent] = useState({
-    title: '',
-    sport: 'Basketball' as SportType,
-    status: 'upcoming' as EventStatus,
-    event_date: '',
-    event_time: '',
-    venue: '',
-    home_team: '',
-    away_team: '',
-    description: '',
-    max_capacity: 0,
+  // Initialize react-hook-form with Zod validation
+  const form = useForm<EventFormValues>({
+    resolver: zodResolver(eventFormSchema),
+    defaultValues: {
+      title: '',
+      sport: 'Basketball',
+      status: 'upcoming',
+      event_date: '',
+      event_time: '',
+      venue: '',
+      home_team: '',
+      away_team: '',
+      description: '',
+      max_capacity: 0,
+    },
   });
 
-  const handleCreateEvent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsCreating(true);
-
+  const onSubmit = async (values: EventFormValues) => {
     try {
       // Use Server Action instead of direct query
-      const result = await createEvent(newEvent);
+      const result = await createEvent(values);
 
       if (!result.success) {
         toast.error('Failed to create event', {
@@ -58,8 +65,6 @@ export default function CreateEventPage() {
       toast.error('Failed to create event', {
         description: 'An unexpected error occurred',
       });
-    } finally {
-      setIsCreating(false);
     }
   };
 
@@ -91,155 +96,194 @@ export default function CreateEventPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleCreateEvent} className="space-y-6">
-              {/* Event Title & Sport */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Event Title *</Label>
-                  <Input
-                    id="title"
-                    value={newEvent.title}
-                    onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                    placeholder="Lakers vs Warriors"
-                    required
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {/* Event Title & Sport */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Event Title *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Lakers vs Warriors" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="sport"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Sport *</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a sport" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Basketball">Basketball</SelectItem>
+                            <SelectItem value="Football">Football</SelectItem>
+                            <SelectItem value="Soccer">Soccer</SelectItem>
+                            <SelectItem value="Baseball">Baseball</SelectItem>
+                            <SelectItem value="Tennis">Tennis</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sport">Sport *</Label>
-                  <Select
-                    value={newEvent.sport}
-                    onValueChange={(value) => setNewEvent({ ...newEvent, sport: value as SportType })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Basketball">Basketball</SelectItem>
-                      <SelectItem value="Football">Football</SelectItem>
-                      <SelectItem value="Soccer">Soccer</SelectItem>
-                      <SelectItem value="Baseball">Baseball</SelectItem>
-                      <SelectItem value="Tennis">Tennis</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
 
-              {/* Teams */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="home_team">Home Team *</Label>
-                  <Input
-                    id="home_team"
-                    value={newEvent.home_team}
-                    onChange={(e) => setNewEvent({ ...newEvent, home_team: e.target.value })}
-                    placeholder="Lakers"
-                    required
+                {/* Teams */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="home_team"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Home Team *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Lakers" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="away_team"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Away Team *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Warriors" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="away_team">Away Team *</Label>
-                  <Input
-                    id="away_team"
-                    value={newEvent.away_team}
-                    onChange={(e) => setNewEvent({ ...newEvent, away_team: e.target.value })}
-                    placeholder="Warriors"
-                    required
-                  />
-                </div>
-              </div>
 
-              {/* Venue */}
-              <div className="space-y-2">
-                <Label htmlFor="venue">Venue *</Label>
-                <Input
-                  id="venue"
-                  value={newEvent.venue}
-                  onChange={(e) => setNewEvent({ ...newEvent, venue: e.target.value })}
-                  placeholder="Crypto.com Arena"
-                  required
+                {/* Venue */}
+                <FormField
+                  control={form.control}
+                  name="venue"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Venue *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Crypto.com Arena" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              {/* Date & Time */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="event_date">Date *</Label>
-                  <Input
-                    id="event_date"
-                    type="date"
-                    value={newEvent.event_date}
-                    onChange={(e) => setNewEvent({ ...newEvent, event_date: e.target.value })}
-                    required
+                {/* Date & Time */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="event_date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date *</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="event_time"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Time *</FormLabel>
+                        <FormControl>
+                          <Input type="time" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="event_time">Time *</Label>
-                  <Input
-                    id="event_time"
-                    type="time"
-                    value={newEvent.event_time}
-                    onChange={(e) => setNewEvent({ ...newEvent, event_time: e.target.value })}
-                    required
+
+                {/* Status & Capacity */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status *</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="upcoming">Upcoming</SelectItem>
+                            <SelectItem value="live">Live</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="max_capacity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Max Capacity</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="20000" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
-              </div>
 
-              {/* Status & Capacity */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status *</Label>
-                  <Select
-                    value={newEvent.status}
-                    onValueChange={(value) => setNewEvent({ ...newEvent, status: value as EventStatus })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="upcoming">Upcoming</SelectItem>
-                      <SelectItem value="live">Live</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="max_capacity">Max Capacity</Label>
-                  <Input
-                    id="max_capacity"
-                    type="number"
-                    value={newEvent.max_capacity || ''}
-                    onChange={(e) => setNewEvent({ ...newEvent, max_capacity: parseInt(e.target.value) || 0 })}
-                    placeholder="20000"
-                  />
-                </div>
-              </div>
-
-              {/* Description */}
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  value={newEvent.description}
-                  onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                  placeholder="Western Conference showdown"
+                {/* Description */}
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Western Conference showdown" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              {/* Actions */}
-              <div className="flex justify-end gap-3 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push('/dashboard')}
-                  disabled={isCreating}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isCreating}>
-                  {isCreating ? 'Creating...' : 'Create Event'}
-                </Button>
-              </div>
-            </form>
+                {/* Actions */}
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.push('/dashboard')}
+                    disabled={form.formState.isSubmitting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={form.formState.isSubmitting}>
+                    {form.formState.isSubmitting ? 'Creating...' : 'Create Event'}
+                  </Button>
+                </div>
+              </form>
+            </Form>
           </CardContent>
         </Card>
       </main>
