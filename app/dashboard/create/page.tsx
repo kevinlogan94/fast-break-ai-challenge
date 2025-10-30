@@ -1,11 +1,15 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createEvent } from '@/actions/events';
+import { getVenues } from '@/actions/venues';
 import { toast } from 'sonner';
 import { eventFormSchema, type EventFormValues } from '@/lib/validations/event';
+import { Venue } from '@/lib/types';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -27,6 +31,23 @@ import {
 
 export default function CreateEventPage() {
   const router = useRouter();
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [isLoadingVenues, setIsLoadingVenues] = useState(true);
+  const [selectedVenueIds, setSelectedVenueIds] = useState<string[]>([]);
+
+  // Load venues on mount
+  useEffect(() => {
+    const loadVenues = async () => {
+      const result = await getVenues();
+      if (result.success && result.data) {
+        setVenues(result.data);
+      } else {
+        toast.error('Failed to load venues');
+      }
+      setIsLoadingVenues(false);
+    };
+    loadVenues();
+  }, []);
 
   // Initialize react-hook-form with Zod validation
   const form = useForm<EventFormValues>({
@@ -37,7 +58,6 @@ export default function CreateEventPage() {
       status: 'upcoming',
       event_date: '',
       event_time: '',
-      venue: '',
       home_team: '',
       away_team: '',
       description: '',
@@ -48,7 +68,10 @@ export default function CreateEventPage() {
   const onSubmit = async (values: EventFormValues) => {
     try {
       // Use Server Action instead of direct query
-      const result = await createEvent(values);
+      const result = await createEvent({
+        ...values,
+        venue_ids: selectedVenueIds,
+      });
 
       if (!result.success) {
         toast.error('Failed to create event', {
@@ -169,20 +192,25 @@ export default function CreateEventPage() {
                   />
                 </div>
 
-                {/* Venue */}
-                <FormField
-                  control={form.control}
-                  name="venue"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Venue *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Crypto.com Arena" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                {/* Venues */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Venues * (Select one or more)
+                  </label>
+                  {isLoadingVenues ? (
+                    <div className="text-sm text-muted-foreground">Loading venues...</div>
+                  ) : (
+                    <MultiSelect
+                      options={venues.map((venue) => ({
+                        label: `${venue.name} (${venue.city}, ${venue.state || venue.country})`,
+                        value: venue.id,
+                      }))}
+                      selected={selectedVenueIds}
+                      onChange={setSelectedVenueIds}
+                      placeholder="Search venues..."
+                    />
                   )}
-                />
+                </div>
 
                 {/* Date & Time */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

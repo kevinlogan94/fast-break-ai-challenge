@@ -9,7 +9,7 @@ export const eventFormSchema = z.object({
   status: z.enum(['upcoming', 'live', 'completed']),
   event_date: z.string().min(1, { message: 'Event date is required' }),
   event_time: z.string().min(1, { message: 'Event time is required' }),
-  venue: z.string().min(1, { message: 'Venue is required' }).max(200, { message: 'Venue name is too long' }),
+  venue: z.string().max(200, { message: 'Venue name is too long' }).optional().or(z.literal('')),
   home_team: z.string().min(1, { message: 'Home team is required' }).max(100, { message: 'Team name is too long' }),
   away_team: z.string().min(1, { message: 'Away team is required' }).max(100, { message: 'Team name is too long' }),
   description: z.string().optional().or(z.literal('')),

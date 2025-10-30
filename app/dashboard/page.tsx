@@ -59,22 +59,27 @@ export default function DashboardPage() {
       
       if (result.success) {
         // Transform database format to our Event type
-        const transformedEvents: Event[] = result.data.map((event: any) => ({
-          id: event.id,
-          title: event.title,
-          sport: event.sport as SportType,
-          status: event.status as EventStatus,
-          date: event.event_date,
-          time: event.event_time,
-          venue: event.venue,
-          homeTeam: event.home_team,
-          awayTeam: event.away_team,
-          homeScore: event.home_score,
-          awayScore: event.away_score,
-          description: event.description,
-          attendees: event.attendees,
-          maxCapacity: event.max_capacity,
-        }));
+        const transformedEvents: Event[] = result.data.map((event: any) => {
+          const venues = (event.event_venues || [])
+            .map((ev: any) => ev.venues)
+            .filter(Boolean);
+          return {
+            id: event.id,
+            title: event.title,
+            sport: event.sport as SportType,
+            status: event.status as EventStatus,
+            date: event.event_date,
+            time: event.event_time,
+            venues,
+            homeTeam: event.home_team,
+            awayTeam: event.away_team,
+            homeScore: event.home_score,
+            awayScore: event.away_score,
+            description: event.description,
+            attendees: event.attendees,
+            maxCapacity: event.max_capacity,
+          } as Event;
+        });
         setEvents(transformedEvents);
       } else {
         console.error('Error fetching events:', result.error);
@@ -94,7 +99,7 @@ export default function DashboardPage() {
         event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.homeTeam.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.awayTeam.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        event.venue.toLowerCase().includes(searchQuery.toLowerCase());
+        (event.venues?.some(v => v.name.toLowerCase().includes(searchQuery.toLowerCase())) ?? false);
       
       const matchesSport = sportFilter === 'all' || event.sport === sportFilter;
       const matchesStatus = statusFilter === 'all' || event.status === statusFilter;
@@ -316,9 +321,32 @@ export default function DashboardPage() {
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <CardTitle className="text-lg">{event.title}</CardTitle>
-                        <CardDescription className="mt-1">
-                          {event.venue} • {formatDateTime(event.date, event.time)}
-                        </CardDescription>
+                        <div className="mt-1 flex items-center gap-2 text-sm text-gray-600">
+                          {/* Venues dropdown */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <Button variant="outline" size="sm">
+                                {event.venues && event.venues.length > 0
+                                  ? event.venues.length === 1
+                                    ? event.venues[0].name
+                                    : `${event.venues[0].name} +${event.venues.length - 1}`
+                                  : ('No venue')}
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
+                              {(event.venues && event.venues.length > 0) ? (
+                                event.venues.map((v, idx) => (
+                                  <DropdownMenuItem key={`${event.id}-${idx}`}>
+                                    {v.name}{v.city ? ` (${v.city}${v.state ? ", " + v.state : ''})` : ''}
+                                  </DropdownMenuItem>
+                                ))
+                              ) : (
+                                <DropdownMenuItem disabled>No venues</DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <span>• {formatDateTime(event.date, event.time)}</span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge className={getStatusColor(event.status)}>
@@ -393,9 +421,31 @@ export default function DashboardPage() {
               <div className="flex justify-between items-start">
                 <div>
                   <CardTitle className="text-2xl">{selectedEvent.title}</CardTitle>
-                  <CardDescription className="mt-2">
-                    {selectedEvent.venue} • {selectedEvent.date} at {selectedEvent.time}
-                  </CardDescription>
+                  <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button variant="outline" size="sm">
+                          {selectedEvent.venues && selectedEvent.venues.length > 0
+                            ? selectedEvent.venues.length === 1
+                              ? selectedEvent.venues[0].name
+                              : `${selectedEvent.venues[0].name} +${selectedEvent.venues.length - 1}`
+                            : 'No venue'}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
+                        {(selectedEvent.venues && selectedEvent.venues.length > 0) ? (
+                          selectedEvent.venues.map((v, idx) => (
+                            <DropdownMenuItem key={`modal-${selectedEvent.id}-${idx}`}>
+                              {v.name}{v.city ? ` (${v.city}${v.state ? ", " + v.state : ''})` : ''}
+                            </DropdownMenuItem>
+                          ))
+                        ) : (
+                          <DropdownMenuItem disabled>No venues</DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <span>• {formatDateTime(selectedEvent.date, selectedEvent.time)}</span>
+                  </div>
                 </div>
                 <Button variant="ghost" onClick={() => setSelectedEvent(null)}>
                   ✕

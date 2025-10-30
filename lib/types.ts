@@ -4,6 +4,16 @@ export type SportType = 'Basketball' | 'Football' | 'Soccer' | 'Baseball' | 'Ten
 
 export type EventStatus = 'upcoming' | 'live' | 'completed';
 
+export interface Venue {
+  id: string;
+  name: string;
+  city: string;
+  state?: string;
+  country: string;
+  capacity?: number;
+  created_at?: string;
+}
+
 export interface Event {
   id: string;
   title: string;
@@ -11,7 +21,7 @@ export interface Event {
   status: EventStatus;
   date: string;
   time: string;
-  venue: string;
+  venues?: Venue[]; // Array of venues for the event
   homeTeam: string;
   awayTeam: string;
   homeScore?: number;

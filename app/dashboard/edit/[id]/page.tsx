@@ -7,6 +7,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { getEventById, updateEvent } from '@/actions/events';
 import { toast } from 'sonner';
 import { eventEditFormSchema, type EventEditFormValues } from '@/lib/validations/event';
+import { getVenues, getEventVenues } from '@/actions/venues';
+import { Venue } from '@/lib/types';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -31,6 +34,9 @@ export default function EditEventPage() {
   const params = useParams();
   const eventId = params.id as string;
   const [isLoading, setIsLoading] = useState(true);
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [isLoadingVenues, setIsLoadingVenues] = useState(true);
+  const [selectedVenueIds, setSelectedVenueIds] = useState<string[]>([]);
 
   // Initialize react-hook-form with Zod validation
   const form = useForm<EventEditFormValues>({
@@ -41,7 +47,6 @@ export default function EditEventPage() {
       status: 'upcoming',
       event_date: '',
       event_time: '',
-      venue: '',
       home_team: '',
       away_team: '',
       home_score: null,
@@ -54,6 +59,17 @@ export default function EditEventPage() {
 
   // Fetch event data on mount
   useEffect(() => {
+    const loadVenues = async () => {
+      const result = await getVenues();
+      if (result.success && result.data) {
+        setVenues(result.data);
+      } else {
+        toast.error('Failed to load venues');
+      }
+      setIsLoadingVenues(false);
+    };
+    loadVenues();
+
     const fetchEvent = async () => {
       setIsLoading(true);
       
@@ -78,7 +94,6 @@ export default function EditEventPage() {
           status: data.status,
           event_date: data.event_date,
           event_time: data.event_time,
-          venue: data.venue,
           home_team: data.home_team,
           away_team: data.away_team,
           home_score: data.home_score,
@@ -87,6 +102,13 @@ export default function EditEventPage() {
           attendees: data.attendees || 0,
           max_capacity: data.max_capacity || 0,
         });
+
+        // Load existing event venues and preselect
+        const evVenues = await getEventVenues(eventId);
+        if (evVenues.success && evVenues.data) {
+          const arr = evVenues.data as any[];
+          setSelectedVenueIds(arr.map((v: any) => v.id));
+        }
       }
 
       setIsLoading(false);
@@ -97,8 +119,12 @@ export default function EditEventPage() {
 
   const onSubmit = async (values: EventEditFormValues) => {
     try {
-      // Use Server Action instead of direct query
-      const result = await updateEvent(eventId, values);
+      // Strip legacy 'venue' and submit venue_ids
+      const { venue: _venue, ...rest } = values as any;
+      const result = await updateEvent(eventId, {
+        ...rest,
+        venue_ids: selectedVenueIds,
+      });
 
       if (!result.success) {
         toast.error('Failed to update event', {
@@ -269,20 +295,25 @@ export default function EditEventPage() {
                   />
                 </div>
 
-                {/* Venue */}
-                <FormField
-                  control={form.control}
-                  name="venue"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Venue *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Crypto.com Arena" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                {/* Venues */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Venues * (Select one or more)
+                  </label>
+                  {isLoadingVenues ? (
+                    <div className="text-sm text-muted-foreground">Loading venues...</div>
+                  ) : (
+                    <MultiSelect
+                      options={venues.map((venue) => ({
+                        label: `${venue.name} (${venue.city}, ${venue.state || venue.country})`,
+                        value: venue.id,
+                      }))}
+                      selected={selectedVenueIds}
+                      onChange={setSelectedVenueIds}
+                      placeholder="Search venues..."
+                    />
                   )}
-                />
+                </div>
 
                 {/* Date & Time */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

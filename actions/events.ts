@@ -14,7 +14,12 @@ export async function getEvents(): Promise<ActionResponse<any[]>> {
     
     const { data, error } = await supabase
       .from('events')
-      .select('*')
+      .select(`
+        *,
+        event_venues (
+          venues (*)
+        )
+      `)
       .order('event_date', { ascending: true });
 
     if (error) {
@@ -49,7 +54,7 @@ export async function createEvent(eventData: {
   status: string;
   event_date: string;
   event_time: string;
-  venue: string;
+  venue_ids?: string[]; // Array of venue IDs
   home_team: string;
   away_team: string;
   description?: string;
@@ -65,10 +70,13 @@ export async function createEvent(eventData: {
       throw new Error('Not authenticated');
     }
 
+    // Extract venue_ids before inserting
+    const { venue_ids, ...eventDataWithoutVenueIds } = eventData;
+
     const { data, error } = await supabase
       .from('events')
       .insert([{
-        ...eventData,
+        ...eventDataWithoutVenueIds,
         created_by: user.id,
       }])
       .select()
@@ -76,6 +84,23 @@ export async function createEvent(eventData: {
 
     if (error) {
       throw new Error(error.message);
+    }
+
+    // If venue_ids provided, create event_venues relationships
+    if (venue_ids && venue_ids.length > 0) {
+      const eventVenues = venue_ids.map(venueId => ({
+        event_id: data.id,
+        venue_id: venueId,
+      }));
+
+      const { error: venueError } = await supabase
+        .from('event_venues')
+        .insert(eventVenues);
+
+      if (venueError) {
+        console.error('Error linking venues:', venueError);
+        // Don't throw - event is created, just log the error
+      }
     }
 
     // Revalidate the dashboard page to show new data
@@ -91,7 +116,7 @@ export async function updateEvent(id: string, eventData: {
   status: string;
   event_date: string;
   event_time: string;
-  venue: string;
+  venue_ids?: string[]; // Array of venue IDs
   home_team: string;
   away_team: string;
   home_score?: number | null;
@@ -103,13 +128,41 @@ export async function updateEvent(id: string, eventData: {
   return safeAction(async () => {
     const supabase = await createClient();
 
+    // Extract venue_ids before updating
+    const { venue_ids, ...eventDataWithoutVenueIds } = eventData;
+
     const { error } = await supabase
       .from('events')
-      .update(eventData)
+      .update(eventDataWithoutVenueIds)
       .eq('id', id);
 
     if (error) {
       throw new Error(error.message);
+    }
+
+    // If venue_ids provided, update event_venues relationships
+    if (venue_ids !== undefined) {
+      // Delete existing relationships
+      await supabase
+        .from('event_venues')
+        .delete()
+        .eq('event_id', id);
+
+      // Insert new relationships
+      if (venue_ids.length > 0) {
+        const eventVenues = venue_ids.map(venueId => ({
+          event_id: id,
+          venue_id: venueId,
+        }));
+
+        const { error: venueError } = await supabase
+          .from('event_venues')
+          .insert(eventVenues);
+
+        if (venueError) {
+          console.error('Error updating venues:', venueError);
+        }
+      }
     }
 
     // Revalidate the dashboard page
