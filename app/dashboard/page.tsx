@@ -6,6 +6,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Event, SportType, EventStatus } from '@/lib/types';
+import { formatDateTime } from '@/lib/utils';
 import type { User } from '@supabase/supabase-js';
 import { getEvents, deleteEvent } from '@/actions/events';
 import { toast } from 'sonner';
@@ -316,7 +317,7 @@ export default function DashboardPage() {
                       <div className="flex-1">
                         <CardTitle className="text-lg">{event.title}</CardTitle>
                         <CardDescription className="mt-1">
-                          {event.venue} • {event.date} at {event.time}
+                          {event.venue} • {formatDateTime(event.date, event.time)}
                         </CardDescription>
                       </div>
                       <div className="flex items-center gap-2">
