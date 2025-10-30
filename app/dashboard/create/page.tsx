@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { SportType, EventStatus } from '@/lib/types';
+import { createEvent } from '@/actions/events';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,7 +18,6 @@ import {
 
 export default function CreateEventPage() {
   const router = useRouter();
-  const supabase = createClient();
   const [isCreating, setIsCreating] = useState(false);
 
   // Form state for new event
@@ -40,18 +39,11 @@ export default function CreateEventPage() {
     setIsCreating(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const { error } = await supabase
-        .from('events')
-        .insert([{
-          ...newEvent,
-          created_by: user?.id,
-        }]);
+      // Use Server Action instead of direct query
+      const result = await createEvent(newEvent);
 
-      if (error) {
-        console.error('Error creating event:', error);
-        alert('Failed to create event');
+      if (!result.success) {
+        alert('Failed to create event: ' + result.error);
         return;
       }
 

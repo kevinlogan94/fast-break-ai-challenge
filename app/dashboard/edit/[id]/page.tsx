@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { SportType, EventStatus } from '@/lib/types';
+import { getEventById, updateEvent } from '@/actions/events';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,7 +20,6 @@ export default function EditEventPage() {
   const router = useRouter();
   const params = useParams();
   const eventId = params.id as string;
-  const supabase = createClient();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -45,20 +44,19 @@ export default function EditEventPage() {
   useEffect(() => {
     const fetchEvent = async () => {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from('events')
-        .select('*')
-        .eq('id', eventId)
-        .single();
+      
+      // Use Server Action instead of direct query
+      const result = await getEventById(eventId);
 
-      if (error) {
-        console.error('Error fetching event:', error);
+      if (!result.success || !result.data) {
+        console.error('Error fetching event:', result.error);
         alert('Failed to load event');
         router.push('/dashboard');
         return;
       }
 
-      if (data) {
+      if (result.data) {
+        const data = result.data;
         setEvent({
           title: data.title,
           sport: data.sport,
@@ -80,35 +78,32 @@ export default function EditEventPage() {
     };
 
     fetchEvent();
-  }, [eventId, supabase, router]);
+  }, [eventId, router]);
 
   const handleUpdateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
 
     try {
-      const { error } = await supabase
-        .from('events')
-        .update({
-          title: event.title,
-          sport: event.sport,
-          status: event.status,
-          event_date: event.event_date,
-          event_time: event.event_time,
-          venue: event.venue,
-          home_team: event.home_team,
-          away_team: event.away_team,
-          home_score: event.home_score,
-          away_score: event.away_score,
-          description: event.description,
-          attendees: event.attendees,
-          max_capacity: event.max_capacity,
-        })
-        .eq('id', eventId);
+      // Use Server Action instead of direct query
+      const result = await updateEvent(eventId, {
+        title: event.title,
+        sport: event.sport,
+        status: event.status,
+        event_date: event.event_date,
+        event_time: event.event_time,
+        venue: event.venue,
+        home_team: event.home_team,
+        away_team: event.away_team,
+        home_score: event.home_score,
+        away_score: event.away_score,
+        description: event.description,
+        attendees: event.attendees,
+        max_capacity: event.max_capacity,
+      });
 
-      if (error) {
-        console.error('Error updating event:', error);
-        alert('Failed to update event');
+      if (!result.success) {
+        alert('Failed to update event: ' + result.error);
         return;
       }
 

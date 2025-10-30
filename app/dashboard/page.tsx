@@ -7,6 +7,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Event, SportType, EventStatus } from '@/lib/types';
 import type { User } from '@supabase/supabase-js';
+import { getEvents, deleteEvent } from '@/actions/events';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -50,17 +51,12 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
       
-      // Fetch events from database
-      const { data: eventsData, error } = await supabase
-        .from('events')
-        .select('*')
-        .order('event_date', { ascending: true });
+      // Fetch events using Server Action
+      const result = await getEvents();
       
-      if (error) {
-        console.error('Error fetching events:', error);
-      } else if (eventsData) {
+      if (result.success && result.data) {
         // Transform database format to our Event type
-        const transformedEvents: Event[] = eventsData.map((event: any) => ({
+        const transformedEvents: Event[] = result.data.map((event: any) => ({
           id: event.id,
           title: event.title,
           sport: event.sport as SportType,
@@ -77,6 +73,8 @@ export default function DashboardPage() {
           maxCapacity: event.max_capacity,
         }));
         setEvents(transformedEvents);
+      } else {
+        console.error('Error fetching events:', result.error);
       }
       
       setIsLoading(false);
@@ -126,14 +124,11 @@ export default function DashboardPage() {
     }
 
     try {
-      const { error } = await supabase
-        .from('events')
-        .delete()
-        .eq('id', eventId);
+      // Use Server Action instead of direct query
+      const result = await deleteEvent(eventId);
 
-      if (error) {
-        console.error('Error deleting event:', error);
-        alert('Failed to delete event');
+      if (!result.success) {
+        alert('Failed to delete event: ' + result.error);
         return;
       }
 
