@@ -252,9 +252,14 @@ export default function DashboardPage() {
 
         {/* Events List */}
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold text-gray-900">
-            Events ({filteredEvents.length})
-          </h2>
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold text-gray-900">
+              Events ({filteredEvents.length})
+            </h2>
+            <Button onClick={() => router.push('/dashboard/create')}>
+              + Create Event
+            </Button>
+          </div>
           
           {isLoading ? (
             <Card>
