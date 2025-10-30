@@ -2,6 +2,10 @@
 
 A modern sports event management dashboard built for the Fastbreak.ai technical assessment.
 
+## Demo
+
+https://www.loom.com/share/95f9240ff6fc4e769e5515013938dacd
+
 ## Tech Stack
 
 - **Next.js 16** - React meta-framework with App Router
